@@ -53,7 +53,7 @@ const PatroenLoginPage = () => {
       status: 'checking',
     });
 
-    if (patreonToken == 'pepe') {
+    if (patreonToken == 'sG6gE8yJ3sK3xX8c') {
       setStatePage({
         ...statePage,
         access_allowed: true,
@@ -81,7 +81,7 @@ const PatroenLoginPage = () => {
 
         console.log({ currently_entitled_amount_cents });
 
-        if (currently_entitled_amount_cents > 300) {
+        if (currently_entitled_amount_cents > 200) {
           setStatePage({
             ...statePage,
             access_allowed: true,
