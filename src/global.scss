@@ -11,26 +11,26 @@
 
 @font-face {
   font-family: 'MotivaSans';
-  src: url('assets/fonts/Raleway-Thin.ttf');
+  src: url('/src/assets/fonts/Raleway-Thin.ttf');
   font-weight: 100;
 }
 @font-face {
   font-family: 'MotivaSans';
-  src: url('assets/fonts/Raleway-Light.ttf');
+  src: url('/src/assets/fonts/Raleway-Light.ttf');
   font-weight: 200;
 }
 @font-face {
   font-family: 'MotivaSans';
-  src: url('assets/fonts/Raleway-Regular.ttf');
+  src: local('MotivaSans'), url('/src/assets/fonts/Raleway-Regular.ttf');
   font-weight: 300;
 }
 @font-face {
   font-family: 'MotivaSans';
-  src: url('assets/fonts/Raleway-Medium.ttf');
+  src: local('MotivaSans'), url('/src/assets/fonts/Raleway-Medium.ttf');
   font-weight: 400;
 }
 @font-face {
   font-family: 'MotivaSans';
-  src: url('assets/fonts/Raleway-Black.ttf');
+  src: local('MotivaSans'), url('/src/assets/fonts/Raleway-Black.ttf');
   font-weight: 600;
 }
