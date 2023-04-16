@@ -251,7 +251,7 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "EmuDeck",
+      "owner": "SilentException",
       "repo": "emudeck-electron"
     }
   },

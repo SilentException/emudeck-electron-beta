@@ -3,7 +3,7 @@ name: Publish
 on:
   push:
     branches:
-      - beta
+      - beta-build
 
 jobs:
   publish-linux:
