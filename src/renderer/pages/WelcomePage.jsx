@@ -4,7 +4,7 @@ import Wrapper from 'components/molecules/Wrapper/Wrapper';
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation, Trans } from 'react-i18next';
+// import { useTranslation } from 'react-i18next';
 import Welcome from 'components/organisms/Wrappers/Welcome';
 import {
   iconSuccess,
@@ -19,25 +19,24 @@ import {
   iconQuick,
   iconCustom,
   iconDoc,
-  iconBooks,
   iconJoystick,
   iconPackage,
   iconDisk,
 } from 'components/utils/images/images';
 
 function WelcomePage() {
-  const { t } = useTranslation();
+  // const { t } = useTranslation();
   const ipcChannel = window.electron.ipcRenderer;
   const { state, setState, stateCurrentConfigs, setStateCurrentConfigs } =
     useContext(GlobalContext);
-  const { system, mode, second, storagePath, gamemode, storage } = state;
+  const { system, mode, second, storagePath, gamemode } = state;
   const [statePage, setStatePage] = useState({
     disabledNext: true,
     disabledBack: true,
     downloadComplete: !navigator.onLine ? true : null,
     updates: null,
     cloned: null,
-    data: ''
+    data: '',
   });
   const { disabledNext, disabledBack, updates } = statePage;
   const navigate = useNavigate();
@@ -48,22 +47,131 @@ function WelcomePage() {
     }
   };
 
+  // show changelog after update
+  useEffect(() => {
+    const showChangelog = localStorage.getItem('show_changelog');
+
+    if (showChangelog === 'true') {
+      navigate('/change-log');
+    }
+
+    // Build games for the store
+    ipcChannel.sendMessage('build-store');
+    ipcChannel.once('build-store', (response) => {
+      console.log({ response });
+    });
+
+    ipcChannel.sendMessage('check-versions');
+    ipcChannel.once('check-versions', (repoVersions) => {
+      // No versioning found, what to do?
+      if (repoVersions === '') {
+        console.log('no versioning found');
+      }
+
+      if (second === true) {
+        // Thanks chatGPT lol
+        const obj1 = repoVersions;
+        const obj2 = stateCurrentConfigs;
+
+        const differences = {};
+
+        for (const key in obj1) {
+          if (JSON.stringify(obj1[key]) !== JSON.stringify(obj2[key])) {
+            differences[key] = obj1[key];
+          }
+        }
+
+        if (Object.keys(differences).length > 0) {
+          setStatePage({ ...statePage, updates: true });
+        }
+      } else {
+        const json = JSON.stringify(repoVersions);
+        localStorage.removeItem('current_versions_beta');
+        localStorage.setItem('current_versions_beta', json);
+
+        setStateCurrentConfigs(repoVersions);
+      }
+    });
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (mode != null) {
+      setStatePage({ ...statePage, disabledNext: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  const openSRM = () => {
+    if (system === 'win32') {
+      ipcChannel.sendMessage('bash', [`taskkill /IM steam.exe /F`]);
+      ipcChannel.sendMessage(
+        'run-app',
+        `${storagePath}\Emulation\\tools\\srm.exe`
+      );
+      ipcChannel.once('run-app', (message) => {
+        console.log({ message });
+      });
+    } else {
+      ipcChannel.sendMessage('bash', [
+        `zenity --question --width 450 --title "Close Steam/Steam Input?" --text "$(printf "<b>Exit Steam to launch Steam Rom Manager? </b>\n\n To add your Emulators and EmulationStation-DE to steam hit Preview, then Generate App List, then wait for the images to download\n\nWhen you are happy with your image choices hit Save App List and wait for it to say it's completed.\n\nDesktop controls will temporarily revert to touch/trackpad/L2/R2")" && (kill -15 $(pidof steam) & ${storagePath}/Emulation/tools/srm/Steam-ROM-Manager.AppImage)`,
+      ]);
+    }
+  };
+
+  const openCSM = () => {
+    ipcChannel.sendMessage('bash', [
+      'csm|||bash ~/.config/EmuDeck/backend/functions/cloudServicesManager.sh',
+    ]);
+    ipcChannel.once('csm', (message) => {
+      console.log({ message });
+    });
+  };
+
+  const sprunge = () => {
+    ipcChannel.sendMessage('bash', [
+      `sprunge|||cat ~/emudeck/emudeck.log | curl -F 'sprunge=<-' http://sprunge.us`,
+    ]);
+    ipcChannel.once('sprunge', (message) => {
+      prompt('Copy this url:', `${message}`);
+    });
+  };
+
+  const migrationFixSDPaths = () => {
+    ipcChannel.sendMessage('emudeck', [`SDPaths|||Migration_fix_SDPaths`]);
+    ipcChannel.once('SDPaths', (message) => {
+      message.includes('true')
+        ? alert(`Paths Fixed!`)
+        : alert(
+            `There was an error tryting to fix your paths. If the problem persist rerun SteamRomManager to fix them`
+          );
+    });
+  };
+
+  const functions = {
+    openSRM,
+    openCSM,
+    sprunge,
+    navigate,
+    migrationFixSDPaths,
+  };
 
   const settingsCardsFeatured = [
     {
       icon: [iconDisk],
       title: 'USB Transfer Wizard',
-      description: 'Import your games from an USB drive',
+      description: 'Transfer your games using a USB Drive',
       button: 'Add more games',
       btnCSS: 'btn-simple--1',
-      status: system !== 'win32',
+      status: system === 'SteamOS',
       function: () => functions.navigate('/copy-games'),
     },
     {
       icon: [iconGear],
       title: 'Quick Settings',
       description:
-        'Customize bezels, shaders, aspect ratio, auto save and more',
+        'Customize bezels, shaders, aspect ratio, auto save, and more',
       button: 'Configure',
       btnCSS: 'btn-simple--1',
       status: true,
@@ -91,16 +199,6 @@ function WelcomePage() {
 
   const settingsCards = [
     {
-      icon: [iconMigrate],
-      title: 'SteamOS 3.5 Fix',
-      description:
-        'Update your paths to the new SD Card paths introduced in Steam 3.5',
-      button: 'Fix',
-      btnCSS: 'btn-simple--5',
-      status: false,
-      function: () => functions.migrationFixSDPaths(),
-    },
-    {
       icon: [iconJoystick],
       title: 'Steam ROM Manager',
       description: 'Add emulators, tools, or ROMs to your Steam Library',
@@ -108,15 +206,6 @@ function WelcomePage() {
       btnCSS: 'btn-simple--5',
       status: true,
       function: () => functions.openSRM(),
-    },
-    {
-      icon: [iconMigrate],
-      title: 'Change Controller',
-      description: 'Change your controller to configure emulators like Yuzu',
-      button: 'Change',
-      btnCSS: 'btn-simple--5',
-      status: system === 'win32',
-      function: () => functions.navigate('/device-configurator'),
     },
     {
       icon: [iconQuick],
@@ -145,7 +234,7 @@ function WelcomePage() {
         'A Decky Loader Plugin to manage performance settings in Game Mode',
       button: 'More info',
       btnCSS: 'btn-simple--5',
-      status: system !== 'win32',
+      status: system === 'SteamOS',
       function: () => functions.navigate('/power-tools'),
     },
     {
@@ -155,7 +244,7 @@ function WelcomePage() {
         'An EmuDeck Decky Loader Plugin to easily view emulator hotkeys in Game Mode',
       button: 'More info',
       btnCSS: 'btn-simple--5',
-      status: system !== 'win32',
+      status: system === 'SteamOS',
       function: () => functions.navigate('/decky-controls'),
     },
     {
@@ -164,7 +253,7 @@ function WelcomePage() {
       description: 'Enable your Steam Deck gyroscope in emulation',
       button: 'More info',
       btnCSS: 'btn-simple--5',
-      status: system !== 'win32',
+      status: system === 'SteamOS',
       function: () => functions.navigate('/gyrodsu'),
     },
     {
@@ -182,22 +271,22 @@ function WelcomePage() {
       description: 'Use the EmuDeck BIOS Checker to validate your BIOS',
       button: 'More info',
       btnCSS: 'btn-simple--5',
-      status: system !== 'win32',
+      status: true,
       function: () => functions.navigate('/check-bios'),
     },
     {
       icon: [iconCloud],
-      title: 'Cloud Backup',
-      description: 'Backup your saves and save states to the cloud',
+      title: 'Cloud Saves',
+      description: 'Sync or backup your saves and save states to the cloud',
       button: 'More info',
       btnCSS: 'btn-simple--5',
       status: true,
-      function: () => functions.navigate('/cloud-sync'),
+      function: () => functions.navigate('/cloud-sync/welcome'),
     },
     {
       icon: [iconCloud],
       title: 'Cloud Services Manager',
-      description: 'Manage your cloud services, Xbox Cloud Gaming and more!',
+      description: 'Manage your cloud services, Xbox Cloud Gaming, and more!',
       button: 'More info',
       btnCSS: 'btn-simple--5',
       status: system !== 'win32',
@@ -207,7 +296,7 @@ function WelcomePage() {
       icon: [iconPrize],
       title: 'RetroAchievements',
       description:
-        'Configure RetroAchievements for RetroArch, Duckstation, and PCSX2',
+        'Configure RetroAchievements for Duckstation, PCSX2, and RetroArch',
       button: 'More info',
       btnCSS: 'btn-simple--5',
       status: true,
@@ -252,7 +341,7 @@ function WelcomePage() {
     },
     {
       icon: [iconPrize],
-      title: 'Become a Patreon',
+      title: 'Become a Patron',
       description: 'Consider supporting EmuDeck on Patreon',
       button: 'Donate',
       btnCSS: 'btn-simple--3',
@@ -263,116 +352,6 @@ function WelcomePage() {
     },
   ];
 
-  // show changelog after update
-  useEffect(() => {
-    const showChangelog = localStorage.getItem('show_changelog');
-
-    if (showChangelog === 'true') {
-      navigate('/change-log');
-    }
-
-    //Build games for the store
-    ipcChannel.sendMessage('build-store');
-    ipcChannel.once('build-store', (response) => {
-      console.log({ response });
-    });
-
-    ipcChannel.sendMessage('check-versions');
-    ipcChannel.once('check-versions', (repoVersions) => {
-      // No versioning found, what to do?
-      if (repoVersions === '') {
-        console.log('no versioning found');
-      }
-
-      if (second === true) {
-        //Thanks chatGPT lol
-        const obj1 = repoVersions;
-        const obj2 = stateCurrentConfigs;
-
-        const differences = {};
-
-        for (const key in obj1) {
-          if (JSON.stringify(obj1[key]) !== JSON.stringify(obj2[key])) {
-            differences[key] = obj1[key];
-          }
-        }
-
-        if (Object.keys(differences).length > 0) {
-          setStatePage({ ...statePage, updates: true });
-        }
-      } else {
-        const json = JSON.stringify(repoVersions);
-        localStorage.removeItem('current_versions_beta');
-        localStorage.setItem('current_versions_beta', json);
-
-        setStateCurrentConfigs(repoVersions);
-      }
-    });
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (mode != null) {
-      setStatePage({ ...statePage, disabledNext: false });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
-
-  const openSRM = () => {
-    if (system === 'win32') {
-      ipcChannel.sendMessage('bash', [
-        `srm|||${storagePath.substring(
-          0,
-          2
-        )} && cd \\ && cd Emulation && cd tools && start srm.exe`,
-      ]);
-      ipcChannel.once('srm', (message) => {
-        console.log({ message });
-      });
-    } else {
-      ipcChannel.sendMessage('bash', [
-        `zenity --question --width 450 --title "Close Steam/Steam Input?" --text "$(printf "<b>Exit Steam to launch Steam Rom Manager? </b>\n\n To add your Emulators and EmulationStation-DE to steam hit Preview, then Generate App List, then wait for the images to download\n\nWhen you are happy with your image choices hit Save App List and wait for it to say it's completed.\n\nDesktop controls will temporarily revert to touch/trackpad/L2/R2")" && (kill -15 $(pidof steam) & ${storagePath}/Emulation/tools/srm/Steam-ROM-Manager.AppImage)`,
-      ]);
-    }
-  };
-
-  const openCSM = () => {
-    ipcChannel.sendMessage('bash', [
-      'csm|||bash ~/.config/EmuDeck/backend/functions/cloudServicesManager.sh',
-    ]);
-    ipcChannel.once('csm', (message) => {
-      console.log({ message });
-    });
-  };
-
-  const sprunge = () => {
-    ipcChannel.sendMessage('bash', [
-      `sprunge|||cat ~/emudeck/emudeck.log | curl -F 'sprunge=<-' http://sprunge.us`,
-    ]);
-    ipcChannel.once('sprunge', (message) => {
-      alert(`Copy this url: ${message}`);
-    });
-  };
-
-  const migrationFixSDPaths = () => {
-    ipcChannel.sendMessage('emudeck', [`SDPaths|||Migration_fix_SDPaths`]);
-    ipcChannel.once('SDPaths', (message) => {
-      message.includes('true')
-        ? alert(`Paths Fixed!`)
-        : alert(
-            `There was an error tryting to fix your paths. If the problem persist rerun SteamRomManager to fix them`
-          );
-    });
-  };
-
-  const functions = {
-    openSRM,
-    openCSM,
-    sprunge,
-    navigate,
-    migrationFixSDPaths,
-  };
   return (
     <Wrapper>
       {second === false && <Header title="Welcome to EmuDeck" />}
@@ -385,7 +364,7 @@ function WelcomePage() {
         alert={
           second
             ? ``
-            : 'Do you need help installing EmuDeck for the first time? <a href="https://youtu.be/rs9jDHIDKkU" target="_blank">Check out this guide</a>'
+            : 'Do you need help installing EmuDeck for the first time? <a href="https://youtu.be/Y5r2WZAImuY" target="_blank">Check out this guide</a>'
         }
         alertCSS="alert--info"
         onClick={selectMode}

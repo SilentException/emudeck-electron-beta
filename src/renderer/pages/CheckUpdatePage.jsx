@@ -4,9 +4,9 @@ import Wrapper from 'components/molecules/Wrapper/Wrapper';
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 import { useNavigate } from 'react-router-dom';
-
+import { Alert, Form } from 'getbasecore/Molecules';
 import Main from 'components/organisms/Main/Main';
-import { Alert } from 'getbasecore/Molecules';
+import Card from 'components/molecules/Card/Card';
 
 import {
   BtnSimple,
@@ -14,9 +14,11 @@ import {
   FormInputSimple,
   LinkSimple,
 } from 'getbasecore/Atoms';
-import { Form } from 'getbasecore/Molecules';
+// Ask for branch
+const branchFile = require('data/branch.json');
 
-import Card from 'components/molecules/Card/Card';
+const { branch } = branchFile;
+
 function CheckUpdatePage() {
   const ipcChannel = window.electron.ipcRenderer;
   const { state, setState, setStateCurrentConfigs } = useContext(GlobalContext);
@@ -38,7 +40,6 @@ function CheckUpdatePage() {
     mode,
     command,
     second,
-    branch,
     installEmus,
     overwriteConfigEmus,
     shaders,
@@ -51,7 +52,7 @@ function CheckUpdatePage() {
   const downloadCompleteRef = useRef(downloadComplete);
   downloadCompleteRef.current = downloadComplete;
 
-  //Download files
+  // Download files
   const [counter, setCounter] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
@@ -67,7 +68,7 @@ function CheckUpdatePage() {
   }, []);
   let updateTimeOut;
   useEffect(() => {
-    //Update timeout + Force clone check
+    // Update timeout + Force clone check
     console.log('UPDATE - SETTING TIMER FOR TIMEOUT');
     updateTimeOut = setTimeout(() => {
       console.log('UPDATE - TIMEOUT REACHED!');
@@ -78,40 +79,46 @@ function CheckUpdatePage() {
       updateFiles();
     }, 10000);
 
-    console.log('UPDATE - CHECKING');
-    ipcChannel.sendMessage('update-check');
-    console.log('UPDATE - WAITING');
-    ipcChannel.once('update-check-out', (message) => {
-      //We clear the timeout
+    if (navigator.onLine) {
+      console.log('UPDATE - CHECKING');
+      ipcChannel.sendMessage('update-check');
+      console.log('UPDATE - WAITING');
+      ipcChannel.once('update-check-out', (message) => {
+        // We clear the timeout
+        clearTimeout(updateTimeOut);
+        console.log('UPDATE - GETTING INFO:');
+        console.log({ message });
+        setStatePage({
+          ...statePage,
+          update: message[0],
+          data: message[1],
+        });
+        if (message[0] === 'up-to-date') {
+          updateFiles();
+        }
+      });
+    } else {
       clearTimeout(updateTimeOut);
-      console.log('UPDATE - GETTING INFO:');
-      console.log({ message });
       setStatePage({
         ...statePage,
-        update: message[0],
-        data: message[1],
+        update: 'up-to-date',
       });
-      if (message[0] == 'up-to-date') {
-        updateFiles();
-      }
-    });
+      console.log('No internet connection');
+    }
 
     const updateFiles = () => {
-      //Ask for branch
-      const branch = require('data/branch.json');
-
       const currentVersions = JSON.parse(
         localStorage.getItem('current_versions_beta')
       );
-      if (!!currentVersions) {
+      if (currentVersions) {
         setStateCurrentConfigs({ ...currentVersions });
       }
 
       const settingsStorage = JSON.parse(
         localStorage.getItem('settings_emudeck')
       );
-      //console.log({ settingsStorage });
-      if (!!settingsStorage) {
+      // console.log({ settingsStorage });
+      if (settingsStorage) {
         const shadersStored = settingsStorage.shaders;
         const overwriteConfigEmusStored = settingsStorage.overwriteConfigEmus;
         const achievementsStored = settingsStorage.achievements;
@@ -120,10 +127,11 @@ function CheckUpdatePage() {
         console.log({ overwriteConfigEmus });
 
         delete settingsStorage.installEmus.primehacks;
+        delete settingsStorage.installEmus.cemunative;
         delete settingsStorage.overwriteConfigEmus.primehacks;
         const installEmusStored = settingsStorage.installEmus;
 
-        //Theres probably a better way to do this...
+        // Theres probably a better way to do this...
         console.log('2 - VERSION - CHECKING');
         ipcChannel.sendMessage('version');
 
@@ -154,7 +162,7 @@ function CheckUpdatePage() {
               system: platform,
               version: version[0],
               gamemode: version[1],
-              branch: branch.branch,
+              branch,
             });
           });
         });
@@ -170,21 +178,21 @@ function CheckUpdatePage() {
               system: platform,
               version: version[0],
               gamemode: version[1],
-              branch: branch.branch,
+              branch,
             });
             setState({
               ...state,
               system: platform,
               version: version[0],
               gamemode: version[1],
-              branch: branch.branch,
+              branch,
             });
           });
         });
       }
     };
 
-    //ipcChannel.sendMessage('clean-log');
+    // ipcChannel.sendMessage('clean-log');
 
     //  setTimeout(() => {
     // console.log('UPDATE - CHECKING');
@@ -205,15 +213,15 @@ function CheckUpdatePage() {
 
   useEffect(() => {
     //
-    //Cloning project
+    // Cloning project
     //
 
-    //Force changelog after update
-    if (update == 'updating') {
+    // Force changelog after update
+    if (update === 'updating') {
       localStorage.setItem('show_changelog', true);
     }
-    if (update == 'up-to-date') {
-      //is the git repo cloned?
+    if (update === 'up-to-date') {
+      // is the git repo cloned?
       console.log('check-git');
       ipcChannel.sendMessage('check-git');
       ipcChannel.once('check-git', (error, cloneStatusCheck, stderr) => {
@@ -233,9 +241,9 @@ function CheckUpdatePage() {
   }, [update]);
 
   useEffect(() => {
-    //settings here
+    // settings here
 
-    if (cloned == false) {
+    if (cloned === false) {
       if (navigator.onLine) {
         ipcChannel.sendMessage(`clone`, branch);
         console.log('clone');
@@ -250,7 +258,7 @@ function CheckUpdatePage() {
       } else {
         alert('You need to be connected to the internet');
       }
-    } else if (cloned == true) {
+    } else if (cloned === true) {
       if (navigator.onLine) {
         ipcChannel.sendMessage('pull', branch);
         console.log('pull');
@@ -259,7 +267,7 @@ function CheckUpdatePage() {
           console.log({ pullStatus });
           console.log({ stderr });
           setStatePage({ ...statePage, downloadComplete: true });
-          //Update timeout
+          // Update timeout
         });
       } else {
         setStatePage({ ...statePage, downloadComplete: true });
@@ -268,19 +276,14 @@ function CheckUpdatePage() {
   }, [cloned]);
 
   useEffect(() => {
-    if (downloadComplete == true) {
-      if (system === 'win32') {
-        navigate('/patreon-login');
-        //navigate('/welcome');
-      } else {
-        navigate('/welcome');
-      }
+    if (downloadComplete === true) {
+      navigate('/welcome');
     }
   }, [downloadComplete]);
 
   return (
     <Wrapper>
-      {update == null && (
+      {update === null && (
         <>
           <Header title="Checking for updates..." />
           <p className="h5">

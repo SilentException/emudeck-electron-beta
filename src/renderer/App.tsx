@@ -6,7 +6,6 @@ import CheckUpdatePage from 'pages/CheckUpdatePage';
 import PatreonLoginPage from 'pages/PatroenLoginPage';
 import WelcomePage from 'pages/WelcomePage';
 import DeviceSelectorPage from 'pages/DeviceSelectorPage';
-import DeviceConfiguratorPage from 'pages/DeviceConfiguratorPage';
 import EmulatorSelectorPage from 'pages/EmulatorSelectorPage';
 import EmulatorConfigurationPage from 'pages/EmulatorConfigurationPage';
 import RomStoragePage from 'pages/RomStoragePage';
@@ -29,8 +28,11 @@ import CHDToolPage from 'pages/CHDToolPage';
 import GyroDSUPage from 'pages/GyroDSUPage';
 
 import UpdateEmusPage from 'pages/UpdateEmusPage';
-import UpdateConfigsPage from 'pages/UpdateConfigsPage';
+
 import CloudSyncPage from 'pages/CloudSyncPage';
+import CloudSyncConfigPage from 'pages/CloudSyncConfigPage';
+import GameModePage from 'pages/GameModePage';
+
 import ChangeLogPage from 'pages/ChangeLogPage';
 import SettingsPage from 'pages/SettingsPage';
 import UninstallPage from 'pages/UninstallPage';
@@ -40,17 +42,17 @@ import VideoGuidePage from 'pages/VideoGuidePage';
 import MigrationPage from 'pages/MigrationPage';
 import CopyGamesPage from 'pages/CopyGamesPage';
 
-import EmuGuidePage from 'pages/EmuGuidePage';
 import EmulatorsPage from 'pages/EmulatorsPage';
 import EmulatorsDetailPage from 'pages/EmulatorsDetailPage';
 
 import AutoSavePage from 'pages/AutoSavePage';
-import HomebrewGamesPage from 'pages/HomebrewGamesPage';
 import ConfirmationPage from 'pages/ConfirmationPage';
 import StoreFrontPage from 'pages/StoreFrontPage';
 import EmulatorResolutionPage from 'pages/EmulatorResolutionPage';
 
 import EndPage from 'pages/EndPage';
+
+import ErrorPage from 'pages/ErrorPage';
 
 import { GlobalContext } from './context/globalContext';
 
@@ -61,9 +63,6 @@ import 'getbasecore/src/components/atoms/Typography/core_typography.scss';
 const branch = require('data/branch.json');
 
 export default function App() {
-
-
-
   const [stateCurrentConfigs, setStateCurrentConfigs] = useState({
     ra: { id: 'ra', code: 'RetroArch', version: 0 },
     dolphin: { id: 'dolphin', code: 'Dolphin', version: 0 },
@@ -109,6 +108,8 @@ export default function App() {
     powerTools: false,
     GyroDSU: false,
     cloudSync: '',
+    cloudSyncType: 'Sync',
+    cloudSyncStatus: false,
     sudoPass: '',
     language: 'en',
     achievements: {
@@ -119,10 +120,10 @@ export default function App() {
     },
     autosave: false,
     ar: {
-      sega: '43',
-      snes: '43',
-      classic3d: '43',
-      dolphin: '43',
+      sega: 43,
+      snes: 43,
+      classic3d: 43,
+      dolphin: 43,
     },
     shaders: {
       handhelds: false,
@@ -209,7 +210,7 @@ export default function App() {
       xenia: {
         id: 'xenia',
         status: false,
-        installed: undefined,
+        installed: false,
         name: 'Xenia',
       },
       mgba: { id: 'mgba', status: false, installed: undefined, name: 'mGBA' },
@@ -245,11 +246,13 @@ export default function App() {
       rpcs3: '720P',
       ryujinx: '720P',
       xemu: '720P',
+      cemu: '720P',
       xenia: '720P',
+      citra: '720P',
+      vita3k: '720P',
+      melonds: '720P',
     },
   });
-
-
 
   return (
     <GlobalContext.Provider
@@ -263,6 +266,7 @@ export default function App() {
       <Router>
         <Routes>
           <Route exact path="/" element={<CheckDependenciesPage />} />
+          <Route exact path="/error" element={<ErrorPage />} />
           <Route exact path="/check-updates" element={<CheckUpdatePage />} />
           <Route exact path="/patreon-login" element={<PatreonLoginPage />} />
 
@@ -271,11 +275,6 @@ export default function App() {
             exact
             path="/device-selector"
             element={<DeviceSelectorPage />}
-          />
-          <Route
-            exact
-            path="/device-configurator"
-            element={<DeviceConfiguratorPage />}
           />
           <Route
             exact
@@ -296,7 +295,6 @@ export default function App() {
           <Route exact path="/RA-bezels" element={<RABezelsPage />} />
 
           <Route exact path="/auto-save" element={<AutoSavePage />} />
-          <Route exact path="/homebrew-games" element={<HomebrewGamesPage />} />
           <Route exact path="/confirmation" element={<ConfirmationPage />} />
           <Route exact path="/store-front" element={<StoreFrontPage />} />
 
@@ -347,9 +345,6 @@ export default function App() {
           <Route exact path="/change-log" element={<ChangeLogPage />} />
           <Route exact path="/settings" element={<SettingsPage />} />
           <Route exact path="/check-bios" element={<CheckBiosPage />} />
-          <Route exact path="/emulator-guide" element={<EmuGuidePage />}>
-            <Route path=":emulator" element={<EmuGuidePage />} />
-          </Route>
 
           <Route exact path="/emulators" element={<EmulatorsPage />}>
             <Route path=":emulator" element={<EmulatorsPage />} />
@@ -371,13 +366,21 @@ export default function App() {
           <Route exact path="/migration" element={<MigrationPage />} />
           <Route exact path="/copy-games" element={<CopyGamesPage />} />
           <Route exact path="/update-emulators" element={<UpdateEmusPage />} />
+
+          <Route exact path="/cloud-sync" element={<CloudSyncPage />}>
+            <Route path=":type" element={<CloudSyncPage />} />
+          </Route>
+          <Route exact path="/game-mode" element={<GameModePage />}>
+            <Route path=":type" element={<GameModePage />} />
+          </Route>
           <Route
             exact
-            path="/update-configurators"
-            element={<UpdateConfigsPage />}
-          />
+            path="/cloud-sync-config"
+            element={<CloudSyncConfigPage />}
+          >
+            <Route path=":type" element={<CloudSyncConfigPage />} />
+          </Route>
 
-          <Route exact path="/cloud-sync" element={<CloudSyncPage />} />
           <Route exact path="/pegasus-theme" element={<PegasusThemePage />} />
           <Route exact path="/end" element={<EndPage />} />
         </Routes>

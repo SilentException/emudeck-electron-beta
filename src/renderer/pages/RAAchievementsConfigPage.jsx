@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useState, useContext } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
 import Header from 'components/organisms/Header/Header';
@@ -6,7 +6,7 @@ import Footer from 'components/organisms/Footer/Footer';
 
 import RAAchievements from 'components/organisms/Wrappers/RAAchievements';
 
-const RAAchievementsConfigPage = () => {
+function RAAchievementsConfigPage() {
   const ipcChannel = window.electron.ipcRenderer;
   const { state, setState } = useContext(GlobalContext);
   const { achievements } = state;
@@ -17,7 +17,7 @@ const RAAchievementsConfigPage = () => {
   });
   const { disabledNext, disabledBack, data } = statePage;
   const setAchievements = (data) => {
-    if (data.target.name == 'user') {
+    if (data.target.name === 'user') {
       setState({
         ...state,
         achievements: { ...achievements, user: data.target.value },
@@ -55,7 +55,7 @@ const RAAchievementsConfigPage = () => {
       <Header title="Configure" bold="RetroAchievements" />
       <RAAchievements
         data={data}
-        disabledBack={true}
+        disabledBack
         onChange={setAchievements}
         onToggle={setAchievementsHardCore}
       />
@@ -67,6 +67,6 @@ const RAAchievementsConfigPage = () => {
       />
     </Wrapper>
   );
-};
+}
 
 export default RAAchievementsConfigPage;

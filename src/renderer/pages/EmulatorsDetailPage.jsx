@@ -1,18 +1,18 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
+import EmuDetail from 'components/organisms/Wrappers/EmuDetail';
 
-import EmuGuide from 'components/organisms/Wrappers/EmuGuide';
+const emuData = require('data/emuData.json');
 
 function EmulatorsDetailPage() {
   const { state, setState, stateCurrentConfigs, setStateCurrentConfigs } =
     useContext(GlobalContext);
   const { installEmus, mode } = state;
-  const { ryujinx } = installEmus;
-  const emuData = require('data/emuData.json');
+
   const { emulator } = useParams();
 
   const [statePage, setStatePage] = useState({
@@ -37,6 +37,13 @@ function EmulatorsDetailPage() {
     updates,
     newDesiredVersions,
   } = statePage;
+
+  const yuzuEAaddToken = () => {
+    ipcChannel.sendMessage('emudeck', [`YuzuEA_addToken|||YuzuEA_addToken`]);
+    ipcChannel.once('YuzuEA_addToken', (message) => {
+      console.log({ message });
+    });
+  };
 
   const diff = (obj1, obj2) => {
     // Make sure an object to compare is provided
@@ -149,7 +156,7 @@ function EmulatorsDetailPage() {
     return diffs;
   };
 
-  //TODO: Use only one state for bioses, doing it this way is quick but madness
+  // TODO: Use only one state for bioses, doing it this way is quick but madness
   const [ps1Bios, setps1Bios] = useState(null);
   const [ps2Bios, setps2Bios] = useState(null);
   const [switchBios, setSwitchBios] = useState(null);
@@ -163,7 +170,7 @@ function EmulatorsDetailPage() {
     ipcChannel.once(`${biosCommand}`, (status) => {
       // console.log({ biosCommand });
       status = status.stdout;
-      //console.log({ status });
+      // console.log({ status });
       status = status.replace('\n', '');
       let biosStatus;
       status.includes('true') ? (biosStatus = true) : (biosStatus = false);
@@ -191,6 +198,62 @@ function EmulatorsDetailPage() {
           setDSBios(biosStatus);
           break;
       }
+    });
+  };
+
+  const reInstallEmu = (emulator, code) => {
+    setStatePage({
+      ...statePage,
+      hideInstallButton: true,
+    });
+
+    ipcChannel.sendMessage('emudeck', [`${code}_install|||${code}_install`]);
+
+    ipcChannel.once(`${code}_install`, (message) => {
+      // console.log({ status });
+      let status = message.stdout;
+      status.replace('\n', '');
+      // Lets check if it did install
+      ipcChannel.sendMessage('emudeck', [
+        `${code}_IsInstalled|||${code}_IsInstalled`,
+      ]);
+
+      ipcChannel.once(`${code}_IsInstalled`, (message) => {
+        // console.log({ status });
+        status = message.stdout;
+        status.replace('\n', '');
+
+        if (status.includes('true')) {
+          setStatePage({
+            ...statePage,
+            textNotification: `${code} installed! 🎉`,
+            showNotification: true,
+            hideInstallButton: false,
+          });
+          // We set the emu as install = yes
+          setState({
+            ...state,
+            installEmus: {
+              ...installEmus,
+              [emulator]: {
+                id: emulator,
+                name: code,
+                status: true,
+              },
+            },
+          });
+        } else {
+          setStatePage({
+            ...statePage,
+            textNotification: `There was an issue trying to install ${code} 😥`,
+            showNotification: true,
+            hideInstallButton: false,
+          });
+          // We save it on localstorage
+          const json = JSON.stringify(state);
+          localStorage.setItem('settings_emudeck', json);
+        }
+      });
     });
   };
 
@@ -247,7 +310,7 @@ function EmulatorsDetailPage() {
             hideInstallButton: false,
           });
           // We save it on localstorage
-          let json = JSON.stringify(state);
+          const json = JSON.stringify(state);
           localStorage.setItem('settings_emudeck', json);
         }
       });
@@ -281,9 +344,9 @@ function EmulatorsDetailPage() {
       ipcChannel.once(`${code}_uninstall`, (status) => {
         // console.log({ status });
         status = status.stdout;
-        //console.log({ status });
+        // console.log({ status });
         status = status.replace('\n', '');
-        //Lets check if it did install
+        // Lets check if it did install
         ipcChannel.sendMessage('emudeck', [
           `${code}_IsInstalled|||${code}_IsInstalled`,
         ]);
@@ -300,14 +363,14 @@ function EmulatorsDetailPage() {
               showNotification: true,
               hideInstallButton: false,
             });
-            //We set the emu as install = no
+            // We set the emu as install = no
             setState({
               ...state,
               installEmus: {
                 ...installEmus,
                 [emulator]: {
                   id: emulator,
-                  name: name,
+                  name: code,
                   status: false,
                 },
               },
@@ -377,7 +440,7 @@ function EmulatorsDetailPage() {
   useEffect(() => {
     console.log('update saved state');
     // We save it on localstorage
-    let json = JSON.stringify(state);
+    const json = JSON.stringify(state);
     localStorage.setItem('settings_emudeck', json);
   }, [state]);
 
@@ -429,7 +492,7 @@ function EmulatorsDetailPage() {
       console.log({ updates });
       setStatePage({
         ...statePage,
-        updates: updates,
+        updates,
         newDesiredVersions: repoVersions,
       });
     });
@@ -443,10 +506,10 @@ function EmulatorsDetailPage() {
       console.log({ updates });
       setStatePage({
         ...statePage,
-        updates: updates,
+        updates,
       });
 
-      let json = JSON.stringify(stateCurrentConfigs);
+      const json = JSON.stringify(stateCurrentConfigs);
       localStorage.setItem('current_versions_beta', json);
     }
   }, [showNotification]);
@@ -455,31 +518,31 @@ function EmulatorsDetailPage() {
       <Header title={emuData[emulatorSelected].name} />
 
       {updates && (
-        <>
-          <EmuGuide
-            mode={mode}
-            disabledNext={disabledNext}
-            disabledBack={disabledBack}
-            emuData={emuData[emulatorSelected]}
-            updateAvailable={updates[emulator] !== undefined ? true : false}
-            ps1={ps1Bios}
-            ps2={ps2Bios}
-            nswitch={switchBios}
-            segacd={segaCDBios}
-            saturn={saturnBios}
-            dreamcast={dreamcastBios}
-            nds={DSBios}
-            onChange={selectEmu}
-            onClick={resetEmu}
-            onClickInstall={installEmu}
-            onClickUninstall={uninstallEmu}
-            showNotification={showNotification}
-            textNotification={textNotification}
-            installEmus={installEmus[emulatorSelected]}
-            disableResetButton={disableResetButton ? true : false}
-            hideInstallButton={hideInstallButton ? true : false}
-          />
-        </>
+        <EmuDetail
+          mode={mode}
+          disabledNext={disabledNext}
+          disabledBack={disabledBack}
+          emuData={emuData[emulatorSelected]}
+          updateAvailable={updates[emulator] !== undefined}
+          ps1={ps1Bios}
+          ps2={ps2Bios}
+          nswitch={switchBios}
+          segacd={segaCDBios}
+          saturn={saturnBios}
+          dreamcast={dreamcastBios}
+          nds={DSBios}
+          onChange={selectEmu}
+          onClick={resetEmu}
+          onClickInstall={installEmu}
+          onClickReInstall={reInstallEmu}
+          onClickUninstall={uninstallEmu}
+          showNotification={showNotification}
+          textNotification={textNotification}
+          installEmus={installEmus[emulatorSelected]}
+          disableResetButton={!!disableResetButton}
+          hideInstallButton={!!hideInstallButton}
+          YuzuEAaddToken={yuzuEAaddToken}
+        />
       )}
       <Footer next={false} />
     </Wrapper>
